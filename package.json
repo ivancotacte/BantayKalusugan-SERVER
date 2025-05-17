@@ -1,0 +1,41 @@
+{
+  "name": "healthmonitorsystem-nodejs",
+  "version": "1.0.0",
+  "main": "server.js",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ivancotacte/HealthMonitorSystem-NodeJS.git"
+  },
+  "author": {
+    "name": "Ivan Cotacte",
+    "email": "cotactearmenion@gmail.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ivancotacte/HealthMonitorSystem-NodeJS/issues"
+  },
+  "homepage": "https://github.com/ivancotacte/HealthMonitorSystem-NodeJS#readme",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "moment-timezone": "^0.5.46",
+    "mongodb": "^6.12.0",
+    "nodemailer": "^7.0.3",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7",
+    "nodemon": "^3.1.9"
+  }
+}
