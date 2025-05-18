@@ -23,6 +23,23 @@ const io = new SocketIOServer(httpServer, {
   },
 });
 
+// Queue management
+let queue = {
+  activeUser: null,
+  waitingUsers: [],
+  maxActiveUsers: 1
+};
+
+const processQueue = () => {
+  if (queue.activeUser === null && queue.waitingUsers.length > 0) {
+    queue.activeUser = queue.waitingUsers.shift();
+    io.emit('queueUpdate', {
+      userId: queue.activeUser,
+      canProceed: true
+    });
+  }
+};
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
   port: 465,
@@ -68,6 +85,123 @@ const authorize = (req, res, next) => {
 
 app.get('/', (req, res) => {
     res.status(200).json({ success: true, message: 'Welcome to the Health Monitoring API!' });
+});
+
+app.post('/api/v1/queue/status', authorize, async (req, res) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ success: false, message: 'User ID is required.' });
+  }
+
+  if (queue.activeUser === userId) {
+    return res.status(200).json({ 
+      success: true, 
+      data: { 
+        canProceed: true,
+        position: 0,
+        totalInQueue: queue.waitingUsers.length,
+        currentUser: queue.activeUser
+      } 
+    });
+  }
+
+  const position = queue.waitingUsers.indexOf(userId) + 1;
+  if (position > 0) {
+    return res.status(200).json({ 
+      success: true, 
+      data: { 
+        canProceed: false,
+        position,
+        totalInQueue: queue.waitingUsers.length,
+        currentUser: queue.activeUser
+      } 
+    });
+  }
+
+  if (queue.activeUser === null && queue.waitingUsers.length === 0) {
+    queue.activeUser = userId;
+    return res.status(200).json({ 
+      success: true, 
+      data: { 
+        canProceed: true,
+        position: 0,
+        totalInQueue: 0,
+        currentUser: userId
+      } 
+    });
+  }
+
+  if (!queue.waitingUsers.includes(userId)) {
+    queue.waitingUsers.push(userId);
+  }
+
+  const newPosition = queue.waitingUsers.indexOf(userId) + 1;
+  return res.status(200).json({ 
+    success: true, 
+    data: { 
+      canProceed: false,
+      position: newPosition,
+      totalInQueue: queue.waitingUsers.length,
+      currentUser: queue.activeUser
+    } 
+  });
+});
+
+app.post('/api/v1/queue/complete', authorize, async (req, res) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ success: false, message: 'User ID is required.' });
+  }
+
+  if (queue.activeUser === userId) {
+    queue.activeUser = null;
+    processQueue();
+    return res.status(200).json({ success: true, message: 'Session completed.' });
+  }
+
+  return res.status(400).json({ success: false, message: 'User is not the active user.' });
+});
+
+app.post('/api/v1/queue/leave', authorize, async (req, res) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ success: false, message: 'User ID is required.' });
+  }
+
+  if (queue.activeUser === userId) {
+    queue.activeUser = null;
+    processQueue();
+    return res.status(200).json({ 
+      success: true, 
+      message: 'User left monitoring page.',
+      data: {
+        nextUserCanProceed: queue.waitingUsers.length > 0
+      }
+    });
+  }
+
+  const userIndex = queue.waitingUsers.indexOf(userId);
+  if (userIndex !== -1) {
+    queue.waitingUsers.splice(userIndex, 1);
+    return res.status(200).json({ 
+      success: true, 
+      message: 'User removed from queue.',
+      data: {
+        nextUserCanProceed: false
+      }
+    });
+  }
+
+  return res.status(200).json({ 
+    success: true, 
+    message: 'User was not in queue.',
+    data: {
+      nextUserCanProceed: false
+    }
+  });
 });
 
 app.post('/api/v1/users/register', authorize, async (req, res) => {
